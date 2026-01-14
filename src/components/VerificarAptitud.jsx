@@ -10,6 +10,10 @@ function VerificarAptitud() {
   const [aptitud, setAptitud] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [usuarioSearch, setUsuarioSearch] = useState('')
+  const [showUsuarioDropdown, setShowUsuarioDropdown] = useState(false)
+  const [establecimientoSearch, setEstablecimientoSearch] = useState('')
+  const [showEstDropdown, setShowEstDropdown] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -65,38 +69,69 @@ function VerificarAptitud() {
 
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
-            <select
-              value={selectedUsuario || ''}
-              onChange={(e) => setSelectedUsuario(e.target.value ? parseInt(e.target.value) : null)}
+            <input
+              type="text"
+              value={usuarioSearch}
+              onChange={(e) => { setUsuarioSearch(e.target.value); setShowUsuarioDropdown(true); }}
+              onFocus={() => setShowUsuarioDropdown(true)}
+              placeholder="Buscar por nombre o documento..."
               disabled={loading}
               className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-            >
-              <option value="">-- Seleccione un usuario --</option>
-              {usuarios.map(usuario => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nombre} - {usuario.documento}
-                </option>
-              ))}
-            </select>
+            />
+            {showUsuarioDropdown && (
+              <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
+                {usuarios.filter(u => (
+                  usuarioSearch === '' ||
+                  u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                  (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+                )).map(u => (
+                  <li
+                    key={u.id}
+                    onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); }}
+                    className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
+                  >
+                    {u.nombre} - {u.documento}
+                  </li>
+                ))}
+                {usuarios.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-gray-500">No hay usuarios</li>
+                )}
+              </ul>
+            )}
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Establecimiento (Mina)</label>
-            <select
-              value={selectedEstablecimiento || ''}
-              onChange={(e) => setSelectedEstablecimiento(e.target.value ? parseInt(e.target.value) : null)}
+            <input
+              type="text"
+              value={establecimientoSearch}
+              onChange={(e) => { setEstablecimientoSearch(e.target.value); setShowEstDropdown(true); }}
+              onFocus={() => setShowEstDropdown(true)}
+              placeholder="Buscar establecimiento..."
               disabled={loading}
               className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-            >
-              <option value="">-- Seleccione un establecimiento --</option>
-              {establecimientos.map(establecimiento => (
-                <option key={establecimiento.id} value={establecimiento.id}>
-                  {establecimiento.nombre}
-                </option>
-              ))}
-            </select>
+            />
+            {showEstDropdown && (
+              <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
+                {establecimientos.filter(est => (
+                  establecimientoSearch === '' ||
+                  est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase())
+                )).map(est => (
+                  <li
+                    key={est.id}
+                    onMouseDown={() => { setSelectedEstablecimiento(est.id); setEstablecimientoSearch(est.nombre); setShowEstDropdown(false); }}
+                    className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
+                  >
+                    {est.nombre}
+                  </li>
+                ))}
+                {establecimientos.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-gray-500">No hay establecimientos</li>
+                )}
+              </ul>
+            )}
           </div>
         </div>
 

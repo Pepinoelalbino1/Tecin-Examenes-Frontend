@@ -33,6 +33,10 @@ function UsuarioExamenes() {
     documento: '',
     email: ''
   })
+  const [usuarioErrors, setUsuarioErrors] = useState({ nombre: '', documento: '', email: '' })
+  const [formErrors, setFormErrors] = useState({ tipoExamen: '', fechaEmision: '', fechaCaducidad: '' })
+  const [usuarioSearch, setUsuarioSearch] = useState('')
+  const [showUsuarioDropdown, setShowUsuarioDropdown] = useState(false)
 
   useEffect(() => {
     loadUsuarios()
@@ -74,26 +78,73 @@ function UsuarioExamenes() {
     setExamenes([])
   }
 
+  const validateExamField = (name, value, otherValues = {}) => {
+    if (name === 'tipoExamen') return value ? '' : 'El tipo de examen es obligatorio'
+    if (name === 'fechaEmision') return value ? '' : 'La fecha de emisión es obligatoria'
+    if (name === 'fechaCaducidad') {
+      if (!value) return 'La fecha de caducidad es obligatoria'
+      if (otherValues.fechaEmision && new Date(value) < new Date(otherValues.fechaEmision)) {
+        return 'La caducidad no puede ser anterior a la emisión'
+      }
+      return ''
+    }
+    return ''
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
+    if (name === 'tipoExamen' || name === 'fechaEmision' || name === 'fechaCaducidad') {
+      const otherValues = { ...formData, [name]: value }
+      const err = validateExamField(name, value, otherValues)
+      setFormErrors(prev => ({ ...prev, [name]: err }))
+      if (name === 'fechaEmision' && otherValues.fechaCaducidad) {
+        const cadErr = validateExamField('fechaCaducidad', otherValues.fechaCaducidad, otherValues)
+        setFormErrors(prev => ({ ...prev, fechaCaducidad: cadErr }))
+      }
+    }
   }
 
   const handleUsuarioInputChange = (e) => {
     const { name, value } = e.target
-    setUsuarioForm(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    if (name === 'documento') {
+      const digits = value.replace(/\D/g, '').slice(0, 8)
+      setUsuarioForm(prev => ({ ...prev, documento: digits }))
+      // clear documento error when user reaches 8 digits
+      if (digits.length === 8) setUsuarioErrors(prev => ({ ...prev, documento: '' }))
+      return
+    }
+
+    setUsuarioForm(prev => ({ ...prev, [name]: value }))
+
+    if (name === 'nombre') {
+      setUsuarioErrors(prev => ({ ...prev, nombre: value.trim() ? '' : 'El nombre es obligatorio' }))
+    }
+
+    if (name === 'email') {
+      const emailValid = /^\S+@\S+\.\S+$/.test(value)
+      setUsuarioErrors(prev => ({ ...prev, email: value ? (emailValid ? '' : 'Email inválido') : '' }))
+    }
+  }
+
+  const handleDocumentoBlur = () => {
+    if (usuarioForm.documento.length !== 8) {
+      setUsuarioErrors(prev => ({ ...prev, documento: 'El DNI debe tener 8 dígitos' }))
+    } else {
+      setUsuarioErrors(prev => ({ ...prev, documento: '' }))
+    }
   }
 
   const handleSubmitUsuario = async (e) => {
     e.preventDefault()
     try {
       setError(null)
+      // validate usuario fields
+      const nombreErr = usuarioForm.nombre.trim() ? '' : 'El nombre es obligatorio'
+      const documentoErr = usuarioForm.documento.length === 8 ? '' : 'El DNI debe tener 8 dígitos'
+      const emailErr = usuarioForm.email ? (/^\S+@\S+\.\S+$/.test(usuarioForm.email) ? '' : 'Email inválido') : ''
+      setUsuarioErrors({ nombre: nombreErr, documento: documentoErr, email: emailErr })
+      if (nombreErr || documentoErr || emailErr) return
       await createUsuario(usuarioForm)
       setShowUsuarioForm(false)
       setUsuarioForm({ nombre: '', documento: '', email: '' })
@@ -107,6 +158,12 @@ function UsuarioExamenes() {
     e.preventDefault()
     try {
       setError(null)
+      // validate exam fields before submit
+      const tipoErr = validateExamField('tipoExamen', formData.tipoExamen)
+      const emisionErr = validateExamField('fechaEmision', formData.fechaEmision)
+      const cadErr = validateExamField('fechaCaducidad', formData.fechaCaducidad, formData)
+      setFormErrors({ tipoExamen: tipoErr, fechaEmision: emisionErr, fechaCaducidad: cadErr })
+      if (tipoErr || emisionErr || cadErr) return
       const data = {
         ...formData,
         usuarioId: selectedUsuario
@@ -203,8 +260,11 @@ function UsuarioExamenes() {
                   value={usuarioForm.nombre}
                   onChange={handleUsuarioInputChange}
                   required
-                  className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 ${usuarioErrors.nombre ? 'border-red-500' : 'border-navy-200 dark:border-navy-700'}`}
                 />
+                {usuarioErrors.nombre && (
+                  <p className="mt-1 text-sm text-red-600">{usuarioErrors.nombre}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Documento *</label>
@@ -213,9 +273,17 @@ function UsuarioExamenes() {
                   name="documento"
                   value={usuarioForm.documento}
                   onChange={handleUsuarioInputChange}
+                  onBlur={handleDocumentoBlur}
+                  inputMode="numeric"
+                  maxLength={8}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className={
+                    `w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${usuarioErrors.documento ? 'border-red-500' : 'border-gray-300'}`
+                  }
                 />
+                {usuarioErrors.documento && (
+                  <p className="mt-1 text-sm text-red-600">{usuarioErrors.documento}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -224,12 +292,19 @@ function UsuarioExamenes() {
                   name="email"
                   value={usuarioForm.email}
                   onChange={handleUsuarioInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${usuarioErrors.email ? 'border-red-500' : 'border-gray-300'}`}
                 />
+                {usuarioErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{usuarioErrors.email}</p>
+                )}
               </div>
             </div>
               <div className="mt-4 flex gap-2">
-              <button type="submit" className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+              <button
+                type="submit"
+                disabled={Boolean(usuarioErrors.nombre || usuarioErrors.documento || usuarioErrors.email) || !usuarioForm.nombre.trim() || usuarioForm.documento.length !== 8}
+                className={`bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium ${ (usuarioErrors.nombre || usuarioErrors.documento || usuarioErrors.email || !usuarioForm.nombre.trim() || usuarioForm.documento.length !== 8) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
                 Guardar
               </button>
               <button type="button" onClick={() => setShowUsuarioForm(false)} className="bg-navy-200 dark:bg-navy-700 hover:opacity-90 text-navy-900 dark:text-gold-100 px-4 py-2 rounded-md text-sm font-medium">
@@ -239,21 +314,36 @@ function UsuarioExamenes() {
           </form>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Usuario</label>
-          <select
-            value={selectedUsuario || ''}
-            onChange={handleUsuarioChange}
-            disabled={loading}
-            className="w-full md:w-1/2 px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-          >
-            <option value="">-- Seleccione un usuario --</option>
-            {usuarios.map(usuario => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nombre} - {usuario.documento}
-              </option>
-            ))}
-          </select>
+        <div className="relative md:w-1/2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Buscar Usuario</label>
+          <input
+            type="text"
+            value={usuarioSearch}
+            onChange={(e) => { setUsuarioSearch(e.target.value); setShowUsuarioDropdown(true); }}
+            onFocus={() => setShowUsuarioDropdown(true)}
+            placeholder="Buscar por nombre o documento..."
+            className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+          />
+          {showUsuarioDropdown && (
+            <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
+              {usuarios.filter(u => (
+                usuarioSearch === '' ||
+                u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+              )).map(u => (
+                <li
+                  key={u.id}
+                  onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); setExamenes([]); }}
+                  className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
+                >
+                  {u.nombre} - {u.documento}
+                </li>
+              ))}
+              {usuarios.length === 0 && (
+                <li className="px-3 py-2 text-sm text-gray-500">No hay usuarios</li>
+              )}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -282,7 +372,7 @@ function UsuarioExamenes() {
                     value={formData.tipoExamen}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 ${formErrors.tipoExamen ? 'border-red-500' : 'border-navy-200 dark:border-navy-700'}`}
                   >
                     <option value="">-- Seleccione --</option>
                     {TIPOS_EXAMEN.map(tipo => (
@@ -291,6 +381,9 @@ function UsuarioExamenes() {
                       </option>
                     ))}
                   </select>
+                  {formErrors.tipoExamen && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.tipoExamen}</p>
+                  )}
                 </div>
 
                 <div>
@@ -301,8 +394,11 @@ function UsuarioExamenes() {
                     value={formData.fechaEmision}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 ${formErrors.fechaEmision ? 'border-red-500' : 'border-navy-200 dark:border-navy-700'}`}
                   />
+                  {formErrors.fechaEmision && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.fechaEmision}</p>
+                  )}
                 </div>
 
                 <div>
@@ -313,8 +409,11 @@ function UsuarioExamenes() {
                     value={formData.fechaCaducidad}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formErrors.fechaCaducidad ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {formErrors.fechaCaducidad && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.fechaCaducidad}</p>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -330,7 +429,11 @@ function UsuarioExamenes() {
               </div>
 
               <div className="mt-4 flex gap-2">
-                <button type="submit" className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                <button
+                  type="submit"
+                  disabled={Boolean(formErrors.tipoExamen || formErrors.fechaEmision || formErrors.fechaCaducidad) || !formData.tipoExamen || !formData.fechaEmision || !formData.fechaCaducidad}
+                  className={`bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium ${ (formErrors.tipoExamen || formErrors.fechaEmision || formErrors.fechaCaducidad || !formData.tipoExamen || !formData.fechaEmision || !formData.fechaCaducidad) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
                   {editingExamen ? 'Actualizar' : 'Guardar'}
                 </button>
                 <button type="button" onClick={handleCancel} className="bg-navy-200 dark:bg-navy-700 hover:opacity-90 text-navy-900 dark:text-gold-100 px-4 py-2 rounded-md text-sm font-medium">

@@ -169,7 +169,16 @@ function GestionMinas() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Establecimientos</h2>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              if (showForm) {
+                // close form and reset
+                setShowForm(false)
+                setEditingEstablecimiento(null)
+                setFormData({ nombre: '', descripcion: '', ubicacion: '', examenesRequeridos: [] })
+              } else {
+                setShowForm(true)
+              }
+            }}
             className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium"
             disabled={loading}
           >
@@ -267,7 +276,11 @@ function GestionMinas() {
         ) : (
           <div className="space-y-4">
             {establecimientos.map(establecimiento => (
-              <div key={establecimiento.id} className="border border-navy-200 dark:border-navy-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-navy-50 dark:bg-navy-800">
+              <div
+                key={establecimiento.id}
+                onClick={() => handleEdit(establecimiento)}
+                className="border border-navy-200 dark:border-navy-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-navy-50 dark:bg-navy-800 cursor-pointer"
+              >
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h3 className="text-lg font-semibold text-navy-900 dark:text-gold-100">{establecimiento.nombre}</h3>
@@ -280,13 +293,13 @@ function GestionMinas() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleEdit(establecimiento)}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(establecimiento) }}
                       className="text-gold-600 hover:text-gold-800 text-sm font-medium"
                     >
                       Editar
                     </button>
                     <button
-                      onClick={() => handleDelete(establecimiento.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(establecimiento.id) }}
                       className="text-red-600 hover:text-red-900 text-sm font-medium"
                     >
                       Eliminar

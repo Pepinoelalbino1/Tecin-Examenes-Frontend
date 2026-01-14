@@ -6,7 +6,6 @@ function ResumenAptitud() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [filterUsuario, setFilterUsuario] = useState('')
-  const [filterMina, setFilterMina] = useState('')
 
   useEffect(() => {
     loadResumen()
@@ -28,13 +27,7 @@ function ResumenAptitud() {
     const matchUsuario = filterUsuario === '' || 
       item.nombreUsuario.toLowerCase().includes(filterUsuario.toLowerCase()) ||
       item.documento.toLowerCase().includes(filterUsuario.toLowerCase())
-    
-    const matchMina = filterMina === '' ||
-      item.minas.some(mina => 
-        mina.nombreEstablecimiento.toLowerCase().includes(filterMina.toLowerCase())
-      )
-    
-    return matchUsuario && matchMina
+    return matchUsuario
   })
 
   const getAllMinas = () => {
@@ -122,7 +115,7 @@ function ResumenAptitud() {
 
       {/* Filtros */}
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Usuario</label>
             <input
@@ -130,16 +123,6 @@ function ResumenAptitud() {
               value={filterUsuario}
               onChange={(e) => setFilterUsuario(e.target.value)}
               placeholder="Nombre o documento..."
-              className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Mina</label>
-            <input
-              type="text"
-              value={filterMina}
-              onChange={(e) => setFilterMina(e.target.value)}
-              placeholder="Nombre de mina..."
               className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
             />
           </div>
@@ -197,7 +180,7 @@ function ResumenAptitud() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm">
                           <span className="text-navy-600 dark:text-navy-300">
-                            {minasAptas.length} de {totalMinas} minas
+                            {minasAptas.length} de {totalMinas} 
                           </span>
                           {minasAptas.length > 0 && (
                             <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
