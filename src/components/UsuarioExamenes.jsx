@@ -402,14 +402,14 @@ function UsuarioExamenes() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Caducidad *</label>
+                  <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-1">Fecha de Caducidad *</label>
                   <input
                     type="date"
                     name="fechaCaducidad"
                     value={formData.fechaCaducidad}
                     onChange={handleInputChange}
                     required
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formErrors.fechaCaducidad ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 ${formErrors.fechaCaducidad ? 'border-red-500' : 'border-navy-200 dark:border-navy-700'}`}
                   />
                   {formErrors.fechaCaducidad && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.fechaCaducidad}</p>

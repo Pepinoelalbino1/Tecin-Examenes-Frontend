@@ -215,7 +215,7 @@ function GestionMinas() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-1">Descripción</label>
                 <textarea
                   name="descripcion"
                   value={formData.descripcion}
@@ -227,7 +227,7 @@ function GestionMinas() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Exámenes Requeridos</label>
+              <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Exámenes Requeridos</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {TIPOS_EXAMEN.map(tipo => (
                   <div key={tipo} className="flex items-start">
