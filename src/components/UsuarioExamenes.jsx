@@ -315,7 +315,7 @@ function UsuarioExamenes() {
         )}
 
         <div className="relative md:w-1/2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Buscar Usuario</label>
+          <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Buscar Usuario</label>
           <input
             type="text"
             value={usuarioSearch}

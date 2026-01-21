@@ -117,7 +117,7 @@ function ResumenAptitud() {
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Usuario</label>
+            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Filtrar por Usuario</label>
             <input
               type="text"
               value={filterUsuario}

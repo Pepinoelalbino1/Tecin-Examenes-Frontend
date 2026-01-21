@@ -70,7 +70,7 @@ function VerificarAptitud() {
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
+            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Usuario</label>
             <input
               type="text"
               value={usuarioSearch}
