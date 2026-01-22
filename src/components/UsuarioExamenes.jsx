@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { getUsuarios, getExamenesByUsuario, createExamen, updateExamen, deleteExamen, createUsuario } from '../services/api'
+import React, { useState, useEffect, useRef } from 'react'
+import { getUsuarios, getExamenesByUsuario, createExamen, updateExamen, deleteExamen, createUsuario, getResumenUsuario, getResumenTodosUsuarios } from '../services/api'
 import { getEstadoColor, getEstadoLabel, getTipoExamenLabel } from '../utils/estadoExamen'
 import { format } from 'date-fns'
 
@@ -224,6 +224,121 @@ function UsuarioExamenes() {
     })
   }
 
+  const handlePrintResumen = async () => {
+    try {
+      setLoading(true)
+      let resumenData
+      
+      if (selectedUsuario) {
+        // Obtener resumen del usuario específico
+        const response = await getResumenUsuario(selectedUsuario)
+        resumenData = response.data
+      } else {
+        // Obtener resumen de todos los usuarios
+        const response = await getResumenTodosUsuarios()
+        resumenData = response.data
+      }
+      
+      // Generar HTML desde los datos del backend
+      const html = generarHTMLResumen(resumenData)
+      
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(html)
+      printWindow.document.close()
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    } catch (err) {
+      setError('Error al generar resumen: ' + (err.response?.data?.message || err.message))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generarHTMLResumen = (resumenData) => {
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Resumen de Usuarios y Aptitudes</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #000; }
+          .header { margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: bold; }
+          .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+          .usuario-section { margin-bottom: 25px; page-break-inside: avoid; border-bottom: 1px solid #ccc; padding-bottom: 15px; }
+          .usuario-header h2 { margin: 0 0 10px 0; font-size: 16px; font-weight: bold; }
+          .usuario-info { margin-bottom: 10px; }
+          .info-item { margin-bottom: 8px; display: inline-block; width: 50%; }
+          .info-label { font-weight: bold; font-size: 11px; color: #333; }
+          .info-value { font-size: 12px; color: #000; }
+          .examen-list { margin-top: 10px; }
+          .examen-list h4 { margin: 0 0 8px 0; font-size: 12px; font-weight: bold; }
+          .examen-item { padding: 8px 0; margin-bottom: 6px; font-size: 12px; }
+          .examen-item .tipo { font-weight: bold; }
+          .examen-item .info { color: #333; margin-top: 2px; }
+          .estado-vigente { font-weight: bold; }
+          .estado-vencido { font-weight: bold; }
+          .estado-proximo { font-weight: bold; }
+          .no-examenes { color: #666; font-style: italic; padding: 10px 0; font-size: 12px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; color: #666; font-size: 11px; }
+          @media print { body { margin: 30px; background-color: white; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${resumenData.titulo}</h1>
+          <p>Generado el ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })} a las ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+    `
+
+    if (resumenData.usuarios && resumenData.usuarios.length > 0) {
+      resumenData.usuarios.forEach(usuario => {
+        if (!usuario) return
+        html += `
+          <div class="usuario-section">
+            <div class="usuario-header">
+              <h2>${usuario.nombre || 'Sin nombre'}</h2>
+            </div>
+            <div class="usuario-info">
+              <div class="info-item"><span class="info-label">Documento:</span> <span class="info-value">${usuario.documento || 'N/A'}</span></div>
+              <div class="info-item"><span class="info-label">Email:</span> <span class="info-value">${usuario.email || 'N/A'}</span></div>
+            </div>
+        `
+
+        if (usuario.examenes && usuario.examenes.length > 0) {
+          html += '<div class="examen-list"><h4>Exámenes Registrados:</h4>'
+          usuario.examenes.forEach(examen => {
+            if (!examen) return
+            html += `
+              <div class="examen-item">
+                <div class="tipo">${examen.tipoExamenLabel || 'Sin tipo'}</div>
+                <div class="info">Emisión: ${examen.fechaEmision || 'N/A'} | Vencimiento: ${examen.fechaCaducidad || 'N/A'} | Estado: ${examen.estado || 'Desconocido'}</div>
+                ${examen.observaciones ? `<div class="info">Observaciones: ${examen.observaciones}</div>` : ''}
+              </div>
+            `
+          })
+          html += '</div>'
+        } else {
+          html += '<div class="no-examenes">No hay exámenes registrados para este usuario</div>'
+        }
+
+        html += '</div>'
+      })
+    }
+
+    html += `
+        <div class="footer">
+          <p>Tecin Mina - Sistema de Gestión de Exámenes Médicos</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    return html
+  }
+
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
@@ -238,19 +353,22 @@ function UsuarioExamenes() {
       )}
 
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Usuarios</h2>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-navy-900 dark:text-gold-100">Seleccionar Usuario</h2>
+            <p className="text-sm text-navy-500 dark:text-navy-300 mt-1">Busque y seleccione un usuario para ver sus exámenes</p>
+          </div>
           <button
             onClick={() => setShowUsuarioForm(!showUsuarioForm)}
-            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
           >
-            + Nuevo Usuario
+            <span>➕</span> Nuevo Usuario
           </button>
         </div>
 
         {showUsuarioForm && (
-          <form onSubmit={handleSubmitUsuario} className="mb-6 p-4 bg-navy-50 dark:bg-navy-900 rounded-lg">
-            <h3 className="text-lg font-medium mb-4">Nuevo Usuario</h3>
+          <form onSubmit={handleSubmitUsuario} className="mb-6 p-4 bg-navy-50 dark:bg-navy-900 rounded-lg border border-gold-200 dark:border-gold-500">
+            <h3 className="text-lg font-medium mb-4 text-navy-900 dark:text-gold-100">Crear Nuevo Usuario</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-1">Nombre *</label>
@@ -314,35 +432,74 @@ function UsuarioExamenes() {
           </form>
         )}
 
-        <div className="relative md:w-1/2">
-          <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Buscar Usuario</label>
-          <input
-            type="text"
-            value={usuarioSearch}
-            onChange={(e) => { setUsuarioSearch(e.target.value); setShowUsuarioDropdown(true); }}
-            onFocus={() => setShowUsuarioDropdown(true)}
-            placeholder="Buscar por nombre o documento..."
-            className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-          />
+        <div className="relative">
+          <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">🔍 Buscar Usuario</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={usuarioSearch}
+              onChange={(e) => { setUsuarioSearch(e.target.value); setShowUsuarioDropdown(true); }}
+              onFocus={() => setShowUsuarioDropdown(true)}
+              placeholder="Escriba el nombre, documento o email..."
+              className="w-full px-4 py-3 border border-navy-200 dark:border-navy-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 text-sm"
+            />
+            {usuarioSearch && (
+              <button
+                onClick={() => { setUsuarioSearch(''); setShowUsuarioDropdown(false); }}
+                className="absolute right-3 top-3 text-navy-400 hover:text-navy-600 dark:hover:text-gold-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {showUsuarioDropdown && (
-            <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
-              {usuarios.filter(u => (
-                usuarioSearch === '' ||
-                u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
-                (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
-              )).map(u => (
-                <li
-                  key={u.id}
-                  onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); setExamenes([]); }}
-                  className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
-                >
-                  {u.nombre} - {u.documento}
-                </li>
-              ))}
-              {usuarios.length === 0 && (
-                <li className="px-3 py-2 text-sm text-gray-500">No hay usuarios</li>
-              )}
-            </ul>
+            <div className="absolute z-10 mt-2 w-full bg-white dark:bg-navy-800 border border-navy-200 dark:border-navy-700 rounded-lg shadow-lg overflow-hidden">
+              <div className="max-h-64 overflow-y-auto">
+                {usuarios.filter(u => (
+                  usuarioSearch === '' ||
+                  u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                  (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                  (u.email || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+                )).length > 0 ? (
+                  usuarios.filter(u => (
+                    usuarioSearch === '' ||
+                    u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                    (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                    (u.email || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+                  )).map(u => (
+                    <div
+                      key={u.id}
+                      onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); setExamenes([]); }}
+                      className={`px-4 py-3 cursor-pointer text-sm border-b border-navy-100 dark:border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-700 transition-colors ${selectedUsuario === u.id ? 'bg-gold-50 dark:bg-navy-700 border-l-4 border-gold-500' : ''}`}
+                    >
+                      <div className="font-medium text-navy-900 dark:text-gold-100">{u.nombre}</div>
+                      <div className="text-xs text-navy-500 dark:text-navy-300 mt-1">📄 {u.documento}</div>
+                      {u.email && <div className="text-xs text-navy-500 dark:text-navy-300">📧 {u.email}</div>}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-4 text-center text-sm text-navy-500 dark:text-navy-300">
+                    No hay usuarios que coincidan con "{usuarioSearch}"
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedUsuario && (
+            <div className="mt-3 p-3 bg-gold-50 dark:bg-navy-700 border border-gold-200 dark:border-gold-500 rounded-lg flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-navy-900 dark:text-gold-100">✓ Usuario seleccionado:</span>
+                <div className="text-sm text-navy-700 dark:text-gold-200 mt-1">{usuarioSearch}</div>
+              </div>
+              <button
+                onClick={() => { setSelectedUsuario(null); setUsuarioSearch(''); setExamenes([]); }}
+                className="text-navy-500 dark:text-gold-300 hover:text-red-600 dark:hover:text-red-400"
+              >
+                ✕
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -350,14 +507,22 @@ function UsuarioExamenes() {
       {selectedUsuario && (
         <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Exámenes del Usuario</h2>
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-              disabled={loading}
-            >
-              + Nuevo Examen
-            </button>
+            <h2 className="text-xl font-semibold text-navy-900 dark:text-gold-100">Exámenes del Usuario</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={handlePrintResumen}
+                className="bg-navy-600 hover:bg-navy-700 dark:bg-navy-700 dark:hover:bg-navy-600 text-gold-100 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+              >
+                <span>🖨️</span> Imprimir Resumen
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                disabled={loading}
+              >
+                <span>➕</span> Nuevo Examen
+              </button>
+            </div>
           </div>
 
           {showForm && (

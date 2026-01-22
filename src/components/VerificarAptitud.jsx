@@ -68,69 +68,115 @@ function VerificarAptitud() {
       )}
 
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <h2 className="text-xl font-semibold text-navy-900 dark:text-gold-100 mb-6">Seleccionar Usuario y Establecimiento</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="relative">
-            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Usuario</label>
+            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">👤 Usuario</label>
             <input
               type="text"
               value={usuarioSearch}
               onChange={(e) => { setUsuarioSearch(e.target.value); setShowUsuarioDropdown(true); }}
               onFocus={() => setShowUsuarioDropdown(true)}
-              placeholder="Buscar por nombre o documento..."
+              placeholder="Busque por nombre o documento..."
               disabled={loading}
-              className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+              className="w-full px-4 py-3 border border-navy-200 dark:border-navy-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 text-sm"
             />
+            {usuarioSearch && (
+              <button
+                onClick={() => { setUsuarioSearch(''); setShowUsuarioDropdown(false); }}
+                className="absolute right-3 top-10 text-navy-400 hover:text-navy-600 dark:hover:text-gold-300"
+              >
+                ✕
+              </button>
+            )}
             {showUsuarioDropdown && (
-              <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
-                {usuarios.filter(u => (
-                  usuarioSearch === '' ||
-                  u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
-                  (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
-                )).map(u => (
-                  <li
-                    key={u.id}
-                    onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); }}
-                    className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
-                  >
-                    {u.nombre} - {u.documento}
-                  </li>
-                ))}
-                {usuarios.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-gray-500">No hay usuarios</li>
-                )}
-              </ul>
+              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-navy-800 border border-navy-200 dark:border-navy-700 rounded-lg shadow-lg overflow-hidden">
+                <div className="max-h-64 overflow-y-auto">
+                  {usuarios.filter(u => (
+                    usuarioSearch === '' ||
+                    u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                    (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+                  )).length > 0 ? (
+                    usuarios.filter(u => (
+                      usuarioSearch === '' ||
+                      u.nombre.toLowerCase().includes(usuarioSearch.toLowerCase()) ||
+                      (u.documento || '').toLowerCase().includes(usuarioSearch.toLowerCase())
+                    )).map(u => (
+                      <div
+                        key={u.id}
+                        onMouseDown={() => { setSelectedUsuario(u.id); setUsuarioSearch(`${u.nombre} - ${u.documento}`); setShowUsuarioDropdown(false); }}
+                        className={`px-4 py-3 cursor-pointer text-sm border-b border-navy-100 dark:border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-700 transition-colors ${selectedUsuario === u.id ? 'bg-gold-50 dark:bg-navy-700 border-l-4 border-gold-500' : ''}`}
+                      >
+                        <div className="font-medium text-navy-900 dark:text-gold-100">{u.nombre}</div>
+                        <div className="text-xs text-navy-500 dark:text-navy-300 mt-1">📄 {u.documento}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-4 text-center text-sm text-navy-500 dark:text-navy-300">
+                      No hay usuarios que coincidan
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {selectedUsuario && (
+              <div className="mt-2 p-2 bg-gold-50 dark:bg-navy-700 border border-gold-200 dark:border-gold-500 rounded text-xs text-navy-700 dark:text-gold-100">
+                ✓ Usuario seleccionado
+              </div>
             )}
           </div>
 
           <div className="relative">
-            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Establecimiento (Mina)</label>
+            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">🏢 Establecimiento (Mina)</label>
             <input
               type="text"
               value={establecimientoSearch}
               onChange={(e) => { setEstablecimientoSearch(e.target.value); setShowEstDropdown(true); }}
               onFocus={() => setShowEstDropdown(true)}
-              placeholder="Buscar establecimiento..."
+              placeholder="Busque establecimiento..."
               disabled={loading}
-              className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+              className="w-full px-4 py-3 border border-navy-200 dark:border-navy-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 text-sm"
             />
+            {establecimientoSearch && (
+              <button
+                onClick={() => { setEstablecimientoSearch(''); setShowEstDropdown(false); }}
+                className="absolute right-3 top-10 text-navy-400 hover:text-navy-600 dark:hover:text-gold-300"
+              >
+                ✕
+              </button>
+            )}
             {showEstDropdown && (
-              <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-navy-800 border border-gray-200 dark:border-navy-700 rounded-md shadow-lg max-h-56 overflow-auto">
-                {establecimientos.filter(est => (
-                  establecimientoSearch === '' ||
-                  est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase())
-                )).map(est => (
-                  <li
-                    key={est.id}
-                    onMouseDown={() => { setSelectedEstablecimiento(est.id); setEstablecimientoSearch(est.nombre); setShowEstDropdown(false); }}
-                    className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-navy-700 cursor-pointer text-sm"
-                  >
-                    {est.nombre}
-                  </li>
-                ))}
-                {establecimientos.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-gray-500">No hay establecimientos</li>
-                )}
-              </ul>
+              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-navy-800 border border-navy-200 dark:border-navy-700 rounded-lg shadow-lg overflow-hidden">
+                <div className="max-h-64 overflow-y-auto">
+                  {establecimientos.filter(est => (
+                    establecimientoSearch === '' ||
+                    est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase())
+                  )).length > 0 ? (
+                    establecimientos.filter(est => (
+                      establecimientoSearch === '' ||
+                      est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase())
+                    )).map(est => (
+                      <div
+                        key={est.id}
+                        onMouseDown={() => { setSelectedEstablecimiento(est.id); setEstablecimientoSearch(est.nombre); setShowEstDropdown(false); }}
+                        className={`px-4 py-3 cursor-pointer text-sm border-b border-navy-100 dark:border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-700 transition-colors ${selectedEstablecimiento === est.id ? 'bg-gold-50 dark:bg-navy-700 border-l-4 border-gold-500' : ''}`}
+                      >
+                        <div className="font-medium text-navy-900 dark:text-gold-100">{est.nombre}</div>
+                        {est.ubicacion && <div className="text-xs text-navy-500 dark:text-navy-300 mt-1">📍 {est.ubicacion}</div>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-4 text-center text-sm text-navy-500 dark:text-navy-300">
+                      No hay establecimientos que coincidan
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {selectedEstablecimiento && (
+              <div className="mt-2 p-2 bg-gold-50 dark:bg-navy-700 border border-gold-200 dark:border-gold-500 rounded text-xs text-navy-700 dark:text-gold-100">
+                ✓ Establecimiento seleccionado
+              </div>
             )}
           </div>
         </div>
@@ -138,9 +184,9 @@ function VerificarAptitud() {
         <button
           onClick={handleVerificar}
           disabled={loading || !selectedUsuario || !selectedEstablecimiento}
-          className="w-full md:w-auto bg-gold-500 hover:bg-gold-600 disabled:bg-navy-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-md text-sm font-medium"
+          className="mt-6 w-full md:w-auto bg-gold-500 hover:bg-gold-600 disabled:bg-navy-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
         >
-          {loading ? 'Verificando...' : 'Verificar Aptitud'}
+          <span>🔍</span> {loading ? 'Verificando...' : 'Verificar Aptitud'}
         </button>
       </div>
 

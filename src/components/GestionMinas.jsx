@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { getEstablecimientos, createEstablecimiento, updateEstablecimiento, deleteEstablecimiento } from '../services/api'
+import React, { useState, useEffect, useRef } from 'react'
+import { getEstablecimientos, createEstablecimiento, updateEstablecimiento, deleteEstablecimiento, getResumenEstablecimientos } from '../services/api'
 import { getTipoExamenLabel } from '../utils/estadoExamen'
 
 const TIPOS_EXAMEN = [
@@ -18,6 +18,7 @@ function GestionMinas() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingEstablecimiento, setEditingEstablecimiento] = useState(null)
+  const [establecimientoSearch, setEstablecimientoSearch] = useState('')
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -152,6 +153,107 @@ function GestionMinas() {
     return examen?.observaciones || ''
   }
 
+  const handlePrintResumen = async () => {
+    try {
+      setLoading(true)
+      const response = await getResumenEstablecimientos()
+      const resumenData = response.data
+      
+      const html = generarHTMLResumenEstablecimientos(resumenData)
+      
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(html)
+      printWindow.document.close()
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    } catch (err) {
+      setError('Error al generar resumen: ' + (err.response?.data?.message || err.message))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generarHTMLResumenEstablecimientos = (resumenData) => {
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Resumen de Establecimientos y Aptitudes</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #000; }
+          .header { margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: bold; }
+          .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+          .est-section { margin-bottom: 25px; page-break-inside: avoid; border-bottom: 1px solid #ccc; padding-bottom: 15px; }
+          .est-header h2 { margin: 0 0 8px 0; font-size: 16px; font-weight: bold; }
+          .est-header p { margin: 4px 0 0 0; font-size: 12px; color: #666; }
+          .est-info { margin-bottom: 10px; }
+          .info-item { margin-bottom: 6px; display: inline-block; width: 100%; }
+          .info-label { font-weight: bold; font-size: 11px; color: #333; display: inline-block; width: 180px; }
+          .info-value { font-size: 12px; color: #000; }
+          .examen-list { margin-top: 10px; }
+          .examen-list h4 { margin: 0 0 6px 0; font-size: 12px; font-weight: bold; }
+          .examen-badge { display: inline; padding: 0; margin: 0 15px 4px 0; font-size: 12px; color: #000; font-weight: normal; }
+          .no-examenes { color: #666; font-style: italic; padding: 8px 0; font-size: 12px; }
+          .descripcion { color: #333; font-size: 12px; margin-top: 8px; line-height: 1.4; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; color: #666; font-size: 11px; }
+          @media print { body { margin: 30px; background-color: white; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${resumenData.titulo}</h1>
+          <p>Generado el ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })} a las ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+    `
+
+    if (resumenData.establecimientos && resumenData.establecimientos.length > 0) {
+      resumenData.establecimientos.forEach((est, index) => {
+        if (!est) return
+
+        html += `
+          <div class="est-section">
+            <div class="est-header">
+              <h2>${est.nombre || 'Sin nombre'}</h2>
+              ${est.ubicacion ? `<p>Ubicación: ${est.ubicacion}</p>` : ''}
+            </div>
+            <div class="est-info">
+              <div class="info-item"><span class="info-label">Exámenes Requeridos:</span> <span class="info-value">${est.examenesRequeridos?.length || 0}</span></div>
+            </div>
+        `
+
+        if (est.descripcion) {
+          html += `<div class="descripcion">Descripción: ${est.descripcion}</div>`
+        }
+
+        if (est.examenesRequeridos && est.examenesRequeridos.length > 0) {
+          html += '<div class="examen-list"><h4>Exámenes Requeridos:</h4>'
+          est.examenesRequeridos.forEach(examen => {
+            if (!examen) return
+            html += `<div class="examen-badge">- ${examen.tipoExamenLabel || 'Sin tipo'}${examen.observaciones ? ` (${examen.observaciones})` : ''}</div>`
+          })
+          html += '</div>'
+        } else {
+          html += '<div class="no-examenes">No hay exámenes requeridos configurados</div>'
+        }
+
+        html += '</div>'
+      })
+    }
+
+    html += `
+        <div class="footer">
+          <p>Tecin Mina - Sistema de Gestión de Exámenes Médicos | Total de establecimientos: ${resumenData.establecimientos?.length || 0}</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    return html
+  }
+
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
@@ -167,23 +269,57 @@ function GestionMinas() {
 
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Establecimientos</h2>
-          <button
-            onClick={() => {
-              if (showForm) {
-                // close form and reset
-                setShowForm(false)
-                setEditingEstablecimiento(null)
-                setFormData({ nombre: '', descripcion: '', ubicacion: '', examenesRequeridos: [] })
-              } else {
-                setShowForm(true)
-              }
-            }}
-            className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-            disabled={loading}
-          >
-            + Nueva Mina
-          </button>
+          <div>
+            <h2 className="text-xl font-semibold text-navy-900 dark:text-gold-100">Establecimientos</h2>
+            <p className="text-sm text-navy-500 dark:text-navy-300 mt-1">Gestione las minas y sus exámenes requeridos</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrintResumen}
+              className="bg-navy-600 hover:bg-navy-700 dark:bg-navy-700 dark:hover:bg-navy-600 text-gold-100 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+              disabled={loading || establecimientos.length === 0}
+            >
+              <span>🖨️</span> Imprimir Resumen
+            </button>
+            <button
+              onClick={() => {
+                if (showForm) {
+                  // close form and reset
+                  setShowForm(false)
+                  setEditingEstablecimiento(null)
+                  setFormData({ nombre: '', descripcion: '', ubicacion: '', examenesRequeridos: [] })
+                } else {
+                  setShowForm(true)
+                }
+              }}
+              className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+              disabled={loading}
+            >
+              <span>➕</span> Nueva Mina
+            </button>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">🔍 Buscar Establecimiento</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={establecimientoSearch}
+              onChange={(e) => setEstablecimientoSearch(e.target.value)}
+              placeholder="Busque por nombre o ubicación..."
+              className="w-full px-4 py-3 border border-navy-200 dark:border-navy-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100 text-sm"
+            />
+            {establecimientoSearch && (
+              <button
+                onClick={() => setEstablecimientoSearch('')}
+                className="absolute right-3 top-3 text-navy-400 hover:text-navy-600 dark:hover:text-gold-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {showForm && (
@@ -275,53 +411,73 @@ function GestionMinas() {
           <p className="text-center py-8 text-navy-500 dark:text-navy-300">No hay establecimientos registrados.</p>
         ) : (
           <div className="space-y-4">
-            {establecimientos.map(establecimiento => (
-              <div
-                key={establecimiento.id}
-                onClick={() => handleEdit(establecimiento)}
-                className="border border-navy-200 dark:border-navy-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-navy-50 dark:bg-navy-800 cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-navy-900 dark:text-gold-100">{establecimiento.nombre}</h3>
-                    {establecimiento.ubicacion && (
-                      <p className="text-sm text-navy-500 dark:text-navy-300">📍 {establecimiento.ubicacion}</p>
-                    )}
-                    {establecimiento.descripcion && (
-                      <p className="text-sm text-navy-500 dark:text-navy-300 mt-1">{establecimiento.descripcion}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleEdit(establecimiento) }}
-                      className="text-gold-600 hover:text-gold-800 text-sm font-medium"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(establecimiento.id) }}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Exámenes Requeridos:</h4>
-                  {establecimiento.examenesRequeridos && establecimiento.examenesRequeridos.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {establecimiento.examenesRequeridos.map((examen, index) => (
-                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-navy-100 dark:bg-navy-700 text-navy-800 dark:text-gold-100">
-                          {getTipoExamenLabel(examen.tipoExamen)}
-                        </span>
-                      ))}
+            {establecimientos.filter(est => 
+              establecimientoSearch === '' ||
+              est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase()) ||
+              (est.ubicacion || '').toLowerCase().includes(establecimientoSearch.toLowerCase())
+            ).length > 0 ? (
+              establecimientos.filter(est => 
+                establecimientoSearch === '' ||
+                est.nombre.toLowerCase().includes(establecimientoSearch.toLowerCase()) ||
+                (est.ubicacion || '').toLowerCase().includes(establecimientoSearch.toLowerCase())
+              ).map(establecimiento => (
+                <div
+                  key={establecimiento.id}
+                  className="border border-navy-200 dark:border-navy-700 rounded-lg p-5 hover:shadow-lg transition-shadow bg-white dark:bg-navy-800 cursor-pointer"
+                  onClick={() => handleEdit(establecimiento)}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-navy-900 dark:text-gold-100">{establecimiento.nombre}</h3>
+                      {establecimiento.ubicacion && (
+                        <p className="text-sm text-navy-500 dark:text-navy-300 mt-1">📍 {establecimiento.ubicacion}</p>
+                      )}
+                      {establecimiento.descripcion && (
+                        <p className="text-sm text-navy-500 dark:text-navy-300 mt-2 line-clamp-2">{establecimiento.descripcion}</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-navy-500 dark:text-navy-300">No hay exámenes requeridos configurados</p>
-                  )}
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEdit(establecimiento) }}
+                        className="text-gold-600 hover:text-gold-800 dark:text-gold-400 dark:hover:text-gold-300 text-sm font-medium px-3 py-1 rounded hover:bg-gold-50 dark:hover:bg-navy-700 transition-colors"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(establecimiento.id) }}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-navy-700 transition-colors"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Exámenes Requeridos:</h4>
+                    {establecimiento.examenesRequeridos && establecimiento.examenesRequeridos.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {establecimiento.examenesRequeridos.map((examen, index) => (
+                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gold-100 dark:bg-gold-900 text-gold-800 dark:text-gold-100 border border-gold-200 dark:border-gold-700">
+                            ✓ {getTipoExamenLabel(examen.tipoExamen)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-navy-500 dark:text-navy-300 italic">No hay exámenes requeridos configurados</p>
+                    )}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-navy-500 dark:text-navy-300">No hay establecimientos que coincidan con "{establecimientoSearch}"</p>
+                <button
+                  onClick={() => setEstablecimientoSearch('')}
+                  className="text-gold-600 hover:text-gold-800 dark:text-gold-400 text-sm mt-2"
+                >
+                  Limpiar búsqueda
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

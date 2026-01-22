@@ -49,6 +49,111 @@ function ResumenAptitud() {
   const getTotalUsuarios = () => resumen.length
   const getTotalAptos = () => resumen.filter(item => item.minas.some(m => m.apto)).length
 
+  const handlePrintResumenEstablecimientos = () => {
+    if (resumen.length === 0) {
+      alert('No hay datos para imprimir')
+      return
+    }
+
+    const resumenData = {
+      titulo: 'Resumen de Establecimientos y Usuarios Aptos',
+      establecimientos: getAllMinas().map(mina => {
+        const usuariosAptos = resumen.filter(usuario => 
+          usuario.minas.some(m => m.establecimientoId === mina.id && m.apto)
+        ).map(usuario => ({
+          nombre: usuario.nombreUsuario,
+          documento: usuario.documento
+        }))
+        
+        return {
+          nombre: mina.nombre,
+          usuariosAptos: usuariosAptos,
+          totalUsuarios: usuariosAptos.length
+        }
+      })
+    }
+
+    const html = generarHTMLResumenEstablecimientosConUsuarios(resumenData)
+    const window_print = window.open('', '', 'width=800,height=600')
+    window_print.document.write(html)
+    window_print.document.close()
+    setTimeout(() => window_print.print(), 500)
+  }
+
+  const generarHTMLResumenEstablecimientosConUsuarios = (resumenData) => {
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Resumen de Establecimientos y Usuarios</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #000; }
+          .header { margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: bold; }
+          .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+          .est-section { margin-bottom: 25px; page-break-inside: avoid; border-bottom: 1px solid #ccc; padding-bottom: 15px; }
+          .est-header h2 { margin: 0 0 10px 0; font-size: 16px; font-weight: bold; }
+          .est-info { margin-bottom: 10px; }
+          .info-item { margin-bottom: 6px; }
+          .info-label { font-weight: bold; font-size: 11px; color: #333; display: inline-block; width: 150px; }
+          .info-value { font-size: 12px; color: #000; }
+          .usuarios-list { margin-top: 10px; }
+          .usuarios-list h4 { margin: 0 0 8px 0; font-size: 12px; font-weight: bold; }
+          .usuario-item { padding: 6px 0; margin-bottom: 4px; font-size: 12px; padding-left: 15px; }
+          .usuario-item:before { content: "• "; margin-left: -10px; }
+          .no-usuarios { color: #666; font-style: italic; padding: 8px 0; font-size: 12px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; color: #666; font-size: 11px; }
+          @media print { body { margin: 30px; background-color: white; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${resumenData.titulo}</h1>
+          <p>Generado el ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })} a las ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+    `
+
+    if (resumenData.establecimientos && resumenData.establecimientos.length > 0) {
+      resumenData.establecimientos.forEach((est) => {
+        if (!est) return
+
+        html += `
+          <div class="est-section">
+            <div class="est-header">
+              <h2>${est.nombre || 'Sin nombre'}</h2>
+            </div>
+            <div class="est-info">
+              <div class="info-item"><span class="info-label">Usuarios Aptos:</span> <span class="info-value">${est.totalUsuarios}</span></div>
+            </div>
+        `
+
+        if (est.usuariosAptos && est.usuariosAptos.length > 0) {
+          html += '<div class="usuarios-list"><h4>Usuarios Autorizados:</h4>'
+          est.usuariosAptos.forEach(usuario => {
+            if (!usuario) return
+            html += `<div class="usuario-item">${usuario.nombre} (${usuario.documento || 'N/A'})</div>`
+          })
+          html += '</div>'
+        } else {
+          html += '<div class="no-usuarios">No hay usuarios aptos para este establecimiento</div>'
+        }
+
+        html += '</div>'
+      })
+    }
+
+    html += `
+        <div class="footer">
+          <p>Tecin Mina - Sistema de Gestión de Exámenes Médicos | Total de establecimientos: ${resumenData.establecimientos?.length || 0}</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    return html
+  }
+
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
@@ -115,18 +220,26 @@ function ResumenAptitud() {
 
       {/* Filtros */}
       <div className="bg-navy-50 dark:bg-navy-800 shadow rounded-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Filtrar por Usuario</label>
-            <input
-              type="text"
-              value={filterUsuario}
-              onChange={(e) => setFilterUsuario(e.target.value)}
-              placeholder="Nombre o documento..."
-              className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
-            />
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-navy-700 dark:text-gold-100 mb-2">Filtrar por Usuario</label>
+              <input
+                type="text"
+                value={filterUsuario}
+                onChange={(e) => setFilterUsuario(e.target.value)}
+                placeholder="Nombre o documento..."
+                className="w-full px-3 py-2 border border-navy-200 dark:border-navy-700 rounded-md shadow-sm focus:outline-none focus:ring-gold-300 focus:border-gold-400 dark:bg-navy-800 dark:text-gold-100"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handlePrintResumenEstablecimientos}
+                className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+              >
+                <span>🖨️</span> Imprimir por Establecimiento
+              </button>
+            </div>
           </div>
-        </div>
       </div>
 
       {/* Tabla de Resumen */}

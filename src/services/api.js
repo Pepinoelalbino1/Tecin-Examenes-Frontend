@@ -36,4 +36,10 @@ export const verificarAptitud = (usuarioId, establecimientoId) =>
 
 export const getResumenAptitud = () => api.get('/aptitud/resumen')
 
+// Resumen e Impresión
+export const getResumenUsuario = (usuarioId) => api.get(`/resumen/usuario/${usuarioId}`)
+export const getResumenTodosUsuarios = () => api.get('/resumen/usuarios')
+export const getResumenEstablecimientos = () => api.get('/resumen/establecimientos')
+export const getResumenEstablecimiento = (establecimientoId) => api.get(`/resumen/establecimiento/${establecimientoId}`)
+
 export default api
